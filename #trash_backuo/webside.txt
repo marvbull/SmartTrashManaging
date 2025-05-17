@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Container Standorte - Karte</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        body { display: flex; }
+        #map { height: 100vh; width: 70vw; }
+        #container-list { width: 30vw; padding: 20px; background-color: #f9f9f9; overflow-y: auto; border-left: 1px solid #ddd; }
+        .container-item { margin-bottom: 15px; padding: 10px; background-color: #ffffff; border-radius: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; }
+        .container-item h3 { margin: 0; font-size: 16px; color: #333; }
+        .container-item p { margin: 5px 0 0; color: #555; font-size: 14px; }
+        .container-item:hover { background-color: #eaeaea; }
+        #search-box { width: 90%; margin-bottom: 20px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        #filter-buttons { margin-bottom: 20px; }
+        .filter-btn { margin-right: 5px; padding: 5px 10px; background-color: #ccc; border: none; border-radius: 5px; cursor: pointer; }
+        .filter-btn.active { background-color: #666; color: #fff; }
+        #district-filter { width: 90%; margin-bottom: 20px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        #route-button { margin-bottom: 20px; padding: 10px; background-color: #666; color: #fff; border: none; border-radius: 5px; cursor: pointer; width: 90%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="container-list">
+        <input type="text" id="search-box" placeholder="🔍 Container suchen..." />
+        <select id="district-filter">
+            <option value="all">🏙️ Alle Stadtteile</option>
+        </select>
+        <div id="filter-buttons">
+            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn" data-filter="low">Weniger als 60%</button>
+            <button class="filter-btn" data-filter="medium">60% - 79%</button>
+            <button class="filter-btn" data-filter="high">80% - 100%</button>
+        </div>
+        <button id="route-button">🔄 Route von Container 1 zu 3</button>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script>
+        const API_KEY = '5b3ce3597851110001cf6248a15b3aeee5eb4969b43a039ecaa8f994';
+
+        var map = L.map('map').setView([49.00491792137482, 8.427806553628137], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap-Mitwirkende'
+        }).addTo(map);
+
+        var markers = L.markerClusterGroup();
+        var markerMap = {};
+        var districts = new Set();
+        var routeLayer = null;
+
+        var containerData = [
+            { "name": "Glascontainer 1", "lat": 49.011212, "lon": 8.404447, "fill": 50, "district": "Hauptbahnhof" },
+            { "name": "Glascontainer 2", "lat": 49.006223, "lon": 8.412388, "fill": 65, "district": "ZKM" },
+            { "name": "Glascontainer 3", "lat": 49.014870, "lon": 8.388423, "fill": 75, "district": "KIT Campus Süd" },
+            { "name": "Glascontainer 4", "lat": 49.002536, "lon": 8.423397, "fill": 85, "district": "Europaplatz" },
+            { "name": "Glascontainer 5", "lat": 49.017663, "lon": 8.441329, "fill": 95, "district": "Durlach Turmberg" }
+        ];
+
+        // Dropdown für Stadtteile füllen
+        containerData.forEach(function(container) {
+            districts.add(container.district);
+        });
+        districts.forEach(function(district) {
+            var option = document.createElement('option');
+            option.value = district.toLowerCase();
+            option.textContent = district;
+            document.getElementById('district-filter').appendChild(option);
+        });
+
+        // Marker hinzufügen und Containerliste erstellen
+        containerData.forEach(function(container) {
+            var iconUrl = container.fill < 60 ? "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png" :
+                          container.fill < 80 ? "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png" :
+                          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png";
+
+            var icon = L.icon({
+                iconUrl: iconUrl,
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-shadow.png",
+                shadowSize: [41, 41]
+            });
+
+            var leafletMarker = L.marker([container.lat, container.lon], { icon: icon });
+            leafletMarker.bindPopup('<strong>' + container.name + '</strong><br>Füllstand: ' + container.fill + '%');
+            markers.addLayer(leafletMarker);
+            markerMap[container.name.toLowerCase()] = leafletMarker;
+
+            var item = document.createElement('div');
+            item.className = 'container-item';
+            item.dataset.name = container.name.toLowerCase();
+            item.dataset.district = container.district.toLowerCase();
+            item.dataset.fill = container.fill;
+            item.innerHTML = '<h3>' + container.name + '</h3><p>' + container.district + '<br>Füllstand: ' + container.fill + '%</p>';
+
+            item.addEventListener('click', function() {
+                map.flyTo([container.lat, container.lon], 18, { duration: 1.5 });
+                leafletMarker.openPopup();
+            });
+
+            document.getElementById('container-list').appendChild(item);
+        });
+
+        map.addLayer(markers);
+
+        function applyFilters() {
+            var selectedDistrict = document.getElementById('district-filter').value;
+            var searchTerm = document.getElementById('search-box').value.toLowerCase();
+            var activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+
+            document.querySelectorAll('.container-item').forEach(function(item) {
+                var fill = parseInt(item.dataset.fill);
+                var matchDistrict = selectedDistrict === 'all' || item.dataset.district === selectedDistrict;
+                var matchSearch = item.dataset.name.includes(searchTerm);
+                var matchFill = activeFilter === 'all' || 
+                                (activeFilter === 'low' && fill < 60) || 
+                                (activeFilter === 'medium' && fill >= 60 && fill < 80) || 
+                                (activeFilter === 'high' && fill >= 80);
+                item.style.display = (matchDistrict && matchSearch && matchFill) ? 'block' : 'none';
+            });
+        }
+
+        document.getElementById('search-box').addEventListener('input', applyFilters);
+        document.getElementById('district-filter').addEventListener('change', applyFilters);
+
+        document.querySelectorAll('.filter-btn').forEach(function(button) {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(function(btn) {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                applyFilters();
+            });
+        });
+
+        // Route berechnen
+        document.getElementById('route-button').addEventListener('click', function() {
+            var start = containerData[0];
+            var end = containerData[2];
+            var apiUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${start.lon},${start.lat}&end=${end.lon},${end.lat}&format=geojson`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (routeLayer) map.removeLayer(routeLayer);
+                    var route = data.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    routeLayer = L.polyline(route, { color: 'dodgerblue', weight: 8, opacity: 0.8 }).addTo(map);
+                    map.fitBounds(routeLayer.getBounds());
+                })
+                .catch(error => console.error(error));
+        });
+    </script>
+</body>
+</html>
+
