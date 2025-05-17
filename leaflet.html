@@ -9,34 +9,272 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body { display: flex; }
-        #map { height: 100vh; width: 70vw; }
-        #container-list { width: 30vw; padding: 20px; background-color: #f9f9f9; overflow-y: auto; border-left: 1px solid #ddd; }
-        .container-item { margin-bottom: 15px; padding: 10px; background-color: #ffffff; border-radius: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; }
+        #map { height: 100vh; width: 130vw; }
+        #container-list {
+            width: 220px;
+            min-width: 220px;
+            max-width: 400px;
+            height: 100vh;
+            padding: 0 24px 24px 24px;
+            background: #fff;
+            border-radius: 32px 0 0 32px;
+            box-shadow: 0 4px 32px 0 rgba(0,0,0,0.10);
+            border-left: none;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fff;
+            border-radius: 0 0 24px 24px;
+            padding: 24px 0 16px 0;
+            margin-bottom: 32px;
+            justify-content: center;
+        }
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #FFD600;
+            font-weight: bold;
+        }
+        .header-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #FFD600;
+            text-shadow: 0 1px 0 #fff;
+            letter-spacing: 1px;
+        }
+        .search-row {
+            display: flex;
+            width: 100%;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        #search-box {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            font-size: 1rem;
+            background: #fafafa;
+        }
+        .search-btn {
+            background: #FFD600;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 0 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: background 0.2s;
+        }
+        .search-btn:hover {
+            background: #FFC400;
+        }
+        .styled-select, #district-filter {
+            width: 100%;
+            margin-bottom: 14px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            font-size: 1rem;
+            background: #fafafa;
+            color: #222;
+        }
+        #route-button {
+            margin: 24px 0 0 0;
+            padding: 16px 0;
+            background: #FFD600;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 64px;
+            height: 64px;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            cursor: pointer;
+            align-self: center;
+        }
+        #route-button:hover {
+            background: #FFC400;
+        }
+        .container-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            display: none; /* Initial unsichtbar */
+        }
         .container-item h3 { margin: 0; font-size: 16px; color: #333; }
         .container-item p { margin: 5px 0 0; color: #555; font-size: 14px; }
-        .container-item:hover { background-color: #eaeaea; }
-        #search-box { width: 90%; margin-bottom: 20px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-        #filter-buttons { margin-bottom: 20px; }
-        .filter-btn { margin-right: 5px; padding: 5px 10px; background-color: #ccc; border: none; border-radius: 5px; cursor: pointer; }
-        .filter-btn.active { background-color: #666; color: #fff; }
-        #district-filter { width: 90%; margin-bottom: 20px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-        #route-button { margin-bottom: 20px; padding: 10px; background-color: #666; color: #fff; border: none; border-radius: 5px; cursor: pointer; width: 90%; }
+        .container-item:hover { background-color: #fffbe6; }
+        #container-scroll-list {
+            width: 100%;
+            flex: 1 1 auto;
+            max-height: calc(100vh - 300px); /* Platz für Header, Filter, Buttons */
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+        #tour-overlay {
+            display: flex;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.18);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        #tour-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        #tour-panel {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 32px 0 rgba(0,0,0,0.12);
+            padding: 32px 32px 24px 32px;
+            min-width: 380px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .tour-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .tour-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #222;
+        }
+        .tour-alt-btn {
+            background: #fff;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 24px;
+            padding: 8px 22px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #222;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+        .tour-alt-btn:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+        }
+        .tour-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .tour-item {
+            display: flex;
+            align-items: center;
+            background: #fafbfc;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 18px 20px;
+            gap: 18px;
+        }
+        .tour-index {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #d1d5db;
+            min-width: 32px;
+        }
+        .tour-main {
+            display: flex;
+            flex-direction: column;
+        }
+        .tour-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #222;
+        }
+        .tour-id {
+            font-size: 1rem;
+            color: #b0b8c1;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+        .tour-close {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 1.6rem;
+            color: #888;
+            cursor: pointer;
+        }
+        .tour-close:hover { color: #222; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div id="container-list">
-        <input type="text" id="search-box" placeholder="🔍 Container suchen..." />
-        <select id="district-filter">
-            <option value="all">🏙️ Alle Stadtteile</option>
-        </select>
-        <div id="filter-buttons">
-            <button class="filter-btn active" data-filter="all">Alle</button>
-            <button class="filter-btn" data-filter="low">Weniger als 60%</button>
-            <button class="filter-btn" data-filter="medium">60% - 79%</button>
-            <button class="filter-btn" data-filter="high">80% - 100%</button>
+        <div class="header">
+            <div class="header-title">VegaLogix</div>
         </div>
-        <button id="route-button">🔄 Route von Container 1 zu 3</button>
+        <button id="route-button" style="background:#FFD600; border:none; border-radius:50%; width:56px; margin-top:8px; margin-bottom:32px; height:56px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.10); cursor:pointer;">
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="10" r="7" stroke="#111" stroke-width="2.5" fill="none"/>
+                <circle cx="36" cy="38" r="7" stroke="#111" stroke-width="2.5" fill="none"/>
+                <circle cx="12" cy="10" r="2.5" stroke="#111" stroke-width="2" fill="none"/>
+                <circle cx="36" cy="38" r="2.5" stroke="#111" stroke-width="2" fill="none"/>
+                <!-- Zickzack-Linie -->
+                <polyline points="12,17 18,22 24,17 30,22 36,17 36,31" stroke="#111" stroke-width="2.5" fill="none"/>
+            </svg>
+        </button>
+        <div class="search-row">
+            <input type="text" id="search-box" placeholder="Search Container ID" />
+        </div>
+        <div style=" padding-right: 30px; position:relative; top:16px;">
+            <input type="text" id="district-autocomplete" placeholder="Stadtteil" autocomplete="off" class="styled-select" style="margin-bottom:0;" />
+            <div id="district-suggestions" style="position:absolute;top:100%;left:0;width:100%;background:#fff;z-index:10;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:none;"></div>
+        </div>
+        <select id="fill-filter" class="styled-select" style="margin-top: 56px; color:grey">
+            <option value="all">Füllstand</option>
+            <option value="low">Weniger als 60%</option>
+            <option value="medium">60% - 79%</option>
+            <option value="high">80% - 100%</option>
+        </select>
+
+        <div id="container-scroll-list"></div>
+    </div>
+    <div id="tour-overlay">
+        <div id="tour-panel">
+            <button class="tour-close" id="tour-close-btn">&times;</button>
+            <div class="tour-header">
+                <span class="tour-title">Tourenübersicht:</span>
+                <button class="tour-alt-btn">Alternative berechnen</button>
+            </div>
+            <div class="tour-list" id="tour-list"></div>
+        </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -59,11 +297,41 @@
         containerData.forEach(function(container) {
             districts.add(container.district);
         });
-        districts.forEach(function(district) {
-            var option = document.createElement('option');
-            option.value = district.toLowerCase();
-            option.textContent = district;
-            document.getElementById('district-filter').appendChild(option);
+        const districtList = Array.from(districts).sort();
+        // Autocomplete für Stadtteil
+        const districtInput = document.getElementById('district-autocomplete');
+        const suggestionsBox = document.getElementById('district-suggestions');
+        districtInput.addEventListener('input', function() {
+            const value = this.value.toLowerCase();
+            suggestionsBox.innerHTML = '';
+            if (!value) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+            const matches = districtList.filter(d => d.toLowerCase().includes(value));
+            if (matches.length === 0) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+            matches.forEach(d => {
+                const div = document.createElement('div');
+                div.textContent = d;
+                div.style.padding = '10px 16px';
+                div.style.cursor = 'pointer';
+                div.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    districtInput.value = d;
+                    suggestionsBox.style.display = 'none';
+                    applyFilters();
+                });
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.style.display = 'block';
+        });
+        document.addEventListener('click', function(e) {
+            if (!districtInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.style.display = 'none';
+            }
         });
 
         // Marker hinzufügen und Containerliste erstellen
@@ -92,62 +360,84 @@
             item.dataset.district = container.district.toLowerCase();
             item.dataset.fill = container.fill;
             item.innerHTML = '<h3>' + container.name + '</h3><p>' + container.district + '<br>Füllstand: ' + container.fill + '%</p>';
+            item.style.display = 'none'; // Initial unsichtbar
 
             item.addEventListener('click', function() {
                 map.flyTo([container.lat, container.lon], 18, { duration: 1.5 });
                 leafletMarker.openPopup();
             });
 
-            document.getElementById('container-list').appendChild(item);
+            document.getElementById('container-scroll-list').appendChild(item);
         });
 
         map.addLayer(markers);
 
         function applyFilters() {
-            var selectedDistrict = document.getElementById('district-filter').value;
+            var selectedDistrict = districtInput.value.trim().toLowerCase();
+            var selectedFill = document.getElementById('fill-filter').value;
             var searchTerm = document.getElementById('search-box').value.toLowerCase();
-            var activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
 
+            // 1. Normale Filterung für die Anzeige
             document.querySelectorAll('.container-item').forEach(function(item) {
                 var fill = parseInt(item.dataset.fill);
-                var matchDistrict = selectedDistrict === 'all' || item.dataset.district === selectedDistrict;
+                var matchDistrict = !selectedDistrict || item.dataset.district === selectedDistrict;
                 var matchSearch = item.dataset.name.includes(searchTerm);
-                var matchFill = activeFilter === 'all' || 
-                                (activeFilter === 'low' && fill < 60) || 
-                                (activeFilter === 'medium' && fill >= 60 && fill < 80) || 
-                                (activeFilter === 'high' && fill >= 80);
+                var matchFill = selectedFill === 'all' ||
+                                (selectedFill === 'low' && fill < 60) ||
+                                (selectedFill === 'medium' && fill >= 60 && fill < 80) ||
+                                (selectedFill === 'high' && fill >= 80);
                 item.style.display = (matchDistrict && matchSearch && matchFill) ? 'block' : 'none';
             });
+
+            // 2. Für das Zoomen: ALLE Marker des Stadtteils sammeln
+            if (selectedDistrict) {
+                var bounds = [];
+                containerData.forEach(function(container) {
+                    if (container.district && container.district.trim().toLowerCase() === selectedDistrict) {
+                        var marker = markerMap[container.name.toLowerCase()];
+                        if (marker) {
+                            bounds.push(marker.getLatLng());
+                        }
+                    }
+                });
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, {padding: [40, 40]});
+                }
+            }
         }
 
+        districtInput.addEventListener('input', applyFilters);
+        document.getElementById('fill-filter').addEventListener('change', applyFilters);
         document.getElementById('search-box').addEventListener('input', applyFilters);
-        document.getElementById('district-filter').addEventListener('change', applyFilters);
+        document.querySelector('.search-btn').addEventListener('click', applyFilters);
 
-        document.querySelectorAll('.filter-btn').forEach(function(button) {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(function(btn) {
-                    btn.classList.remove('active');
-                });
-                this.classList.add('active');
-                applyFilters();
-            });
-        });
-
-        // Route berechnen
+        // Tourenübersicht Overlay-Logik
+        const tourOverlay = document.getElementById('tour-overlay');
+        const tourListDiv = document.getElementById('tour-list');
+        const tourCloseBtn = document.getElementById('tour-close-btn');
         document.getElementById('route-button').addEventListener('click', function() {
-            var start = containerData[0];
-            var end = containerData[2];
-            var apiUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${start.lon},${start.lat}&end=${end.lon},${end.lat}&format=geojson`;
-
-            fetch(apiUrl)
-                .then(response => response.json())
-                .then(data => {
-                    if (routeLayer) map.removeLayer(routeLayer);
-                    var route = data.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                    routeLayer = L.polyline(route, { color: 'dodgerblue', weight: 8, opacity: 0.8 }).addTo(map);
-                    map.fitBounds(routeLayer.getBounds());
-                })
-                .catch(error => console.error(error));
+            // Glascontainer filtern (name enthält -G)
+            const glassContainers = containerData.filter(c => c.name && c.name.includes('-G'));
+            tourListDiv.innerHTML = '';
+            glassContainers.forEach((c, i) => {
+                const item = document.createElement('div');
+                item.className = 'tour-item';
+                item.innerHTML = `<span class="tour-index">${i+1}</span>
+                    <div class="tour-main">
+                        <span class="tour-name">Container ${c.name.split('-')[1]}</span>
+                        <span class="tour-id">${c.name}</span>
+                    </div>`;
+                tourListDiv.appendChild(item);
+            });
+            tourOverlay.classList.add('active');
+        });
+        tourCloseBtn.addEventListener('click', function() {
+            tourOverlay.classList.remove('active');
+        });
+        tourOverlay.addEventListener('mousedown', function(e) {
+            if (e.target === tourOverlay) {
+                tourOverlay.classList.remove('active');
+            }
         });
     </script>
 </body>
